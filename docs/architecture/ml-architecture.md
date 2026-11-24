@@ -1,79 +1,27 @@
-# Machine Learning & Behavioural Analytics Architecture — Finora
+# Analytics implementation
 
-## 1. Intelligence Vision & Guiding Philosophy
+Finora's current analytics are deterministic calculations and rules. The `backend/app/domain/ml/` directory name is historical; it does not mean the product uses a trained ML model.
 
-Finora rejects "AI theater" (e.g. wrapping trivial sum queries in LLM prompts or training opaque neural networks on sparse tabular data).
+## Current components
 
-Instead, our intelligence subsystem follows a **three-tier progressive architecture**:
-1. **Tier 1: Deterministic & Statistical Modeling** (Rolling aggregates, EMA, rate-of-change, linear trendlines).
-2. **Tier 2: Classic Machine Learning** (Isolation Forest for spending anomalies, Random Forest / GBDT for multi-variable category forecasting).
-3. **Tier 3: Behavioural Rule & Recommendation Engine** (Actionable financial nudge generator).
+| Module | Current responsibility |
+| --- | --- |
+| `features.py` | Derives transaction-window features and data sufficiency values. |
+| `forecaster.py` | Computes a deterministic month-end spending projection and interval from observed activity. |
+| `change_detection.py` | Compares recent transaction periods with a prior baseline. |
+| `anomaly.py` | Flags statistical outliers; current implementation is heuristic/statistical, not Isolation Forest. |
+| `recommendations.py` | Applies rules to feature and shift outputs to create suggestions. |
+| `historical_engine.py` | Runs empirical/statistical sampling over records for selected time windows. |
+| `api/v1/analytics.py` | Scopes transactions to the current user and exposes analytics DTOs. |
 
----
+The frontend's Insights screen uses the overview and selected analytics routes. It hides some fields known to be placeholders or misleading; inspect both the backend DTO and current UI before exposing more.
 
-## 2. ML Pipeline & Data Flow
+## Important limitations
 
-```mermaid
-flowchart TD
-    subgraph DataIngestion [Canonical Transactions]
-        TxStream[(Canonical Transactions\nAmount, Time, Merchant, Category)]
-    end
+- There is no trained model, external LLM, vector database, or RAG pipeline.
+- The 10-year FinGraph on the Overview uses generated records from `frontend/src/lib/demo-data.ts`; it does not read transaction history or market prices.
+- The historical endpoint currently falls back to a hard-coded ₹148,500 balance when a user has no accounts. This is a defect and must not be presented as real data.
+- A privacy-named helper in the historical path does regex masking and identifier hashing; it does not enforce network isolation or certify privacy.
+- Statistical intervals and rule-based scores should be described with their definitions and data-sufficiency limits. They are not financial advice.
 
-    subgraph FeatureEngineering [Feature Extraction Engine]
-        F1[Rolling Spend Velocity\n7-day, 30-day, 90-day EMA]
-        F2[Temporal Patterns\nDay-of-Week, Hour-of-Day, Weekend Ratio]
-        F3[Merchant & Category Entropy\nConcentration & Frequency Scores]
-        F4[Income vs Expense Dynamics\nSavings Rate, Burn Velocity]
-    end
-
-    subgraph IntelligenceEngines [Analytical & ML Models]
-        M_Forecaster[Spending & Cash Flow Forecaster\nLinear Regression + EMA Trends]
-        M_Exhaustion[Budget Exhaustion Predictor\nMonte Carlo / Burn Projection]
-        M_Anomaly[Anomaly & Outlier Detector\nIsolation Forest + Z-Score]
-        M_Goal[Goal Projection & Scenario Engine\nCompound Interest Simulation]
-    end
-
-    subgraph OutputSurfaces [User Experience & Nudges]
-        UI_Score[Financial Behaviour Score: 0-100]
-        UI_Calendar[Calendar Predicted Daily Burn]
-        UI_Alerts[Unusual Transaction Alerts]
-        UI_Nudges[Actionable Next-Step Recommendations]
-    end
-
-    TxStream --> FeatureEngineering
-    FeatureEngineering --> IntelligenceEngines
-    IntelligenceEngines --> OutputSurfaces
-```
-
----
-
-## 3. Feature Store Schema
-
-| Feature Name | Type | Description |
-| :--- | :--- | :--- |
-| `burn_rate_daily_avg_30d` | `Decimal` | Average daily expenditure over the prior 30 days. |
-| `weekend_spend_ratio` | `Float` | Percentage of total discretionary spending occurring on Sat/Sun. |
-| `discretionary_spend_ratio`| `Float` | Dining, Shopping, Entertainment vs. Rent, Utilities, Groceries. |
-| `impulse_index` | `Float (0-1.0)`| Proportion of unplanned transactions with high frequency & variance. |
-| `savings_rate` | `Float` | `(Net Income - Total Spend) / Net Income`. |
-| `runway_days` | `Integer` | Liquid account balance / average daily burn rate. |
-
----
-
-## 4. Anomaly Detection & Forecasting Heuristics
-
-- **Isolation Forest**: Trained per-user when transaction count > 50. Outlier score indicates unusual volume, odd time of day, or rare merchant.
-- **Budget Exhaustion**:
-  $$\text{Projected Exhaustion Day} = \frac{\text{Budget Limit} - \text{Current Spend}}{\text{Rolling 7-Day Average Daily Spend}} + \text{Current Day}$$
-  If $\text{Projected Exhaustion Day} < \text{Days in Month}$, a budget breach alert is flagged.
-
-
----
-
-## 5. Multi-Horizon Historical Engine & Kiteworks Zero-Trust Isolation
-
-For detailed system diagrams, local RAG retrieval architecture, and the complete Kiteworks air-gapped quarantine perimeter specification, see [system-design-and-ml-rag.md](system-design-and-ml-rag.md).
-
-- **Multi-Horizon Slicing**: Evaluates user financial data across 30 days, 1 year, 5 years, 10 years, and all-time connected history.
-- **Kiteworks Privacy Gate**: Enforces `KW-FIN-ZERO-LEAKAGE-2026.1` zero-trust policy. All PII is sanitized and salted; zero data leaves the local in-process memory. Third-party cloud LLM inference is strictly blocked.
-- **Empirical Bootstrap Sampling**: Computes 1,000 non-parametric bootstrap draws per horizon to deliver honest 80% and 95% empirical confidence intervals without cloud dependency.
+See [product truth](../../Context-Manager/product-truth.md) for the full current status and source paths.

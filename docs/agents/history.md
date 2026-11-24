@@ -5,6 +5,10 @@ the complete source of commit history. Each entry records what changed, why it
 mattered, and what it did **not** complete so future work does not repeat
 assumptions from old plans.
 
+For the current implementation map and verified product status, use
+[`Context-Manager/`](../../Context-Manager/README.md). This file preserves
+milestone history; it is not the current feature inventory.
+
 ## 2026-10-06 to 2026-10-07 — Initial platform foundation
 
 - [de40408](https://github.com/TarunyaProgrammer/FinSOL2/commit/de40408) is the
@@ -527,6 +531,27 @@ assumptions from old plans.
 - Added grouped desktop navigation, a mobile section menu, and a tabular
   alternative to the charts. The summary uses the existing transaction cache.
   The frontend and backend need to deploy together for the new summary route.
+
+## 2026-11-24 — Upstream themes, FinGraph, and historical analytics
+
+- Imported upstream commits `f71dab6` through `e8c6a86`: theme selection, Dark
+  and AMOLED styling, metric formula details, a stock-market-style chart, and
+  a historical sampling endpoint.
+- FinGraph currently defaults to generated records in
+  `frontend/src/lib/demo-data.ts`; the Overview does not pass user transactions
+  into it. The historical analytics route has a hard-coded fallback balance
+  when the user has no accounts. These are current data-integrity gaps, not
+  verified user insights. See the [current status](../../Context-Manager/product-truth.md).
+- The bank-connect card remains simulated and writes an account label. No live
+  financial provider or market-data feed was added.
+
+## 2026-11-24 — Direct static image delivery
+
+- [1600b4c](https://github.com/TarunyaProgrammer/FinSOL2/commit/1600b4c)
+  configured Next images to bypass `/_next/image` after that hosted route
+  returned 404 while the checked-in image URLs returned 200.
+- The frontend lint, typecheck, and production build passed before the push.
+  The deployment itself was not visually verified after publishing.
 
 ## Updating this history
 

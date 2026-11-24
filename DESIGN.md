@@ -37,6 +37,12 @@ patterns, and planning budgets and goals. The visual direction uses cool stone,
 graphite, and brushed brass. The typography pairs Newsreader for display and DM
 Sans for controls, tables, and long text. Both are served locally.
 
+The workspace currently offers **Fin**, **Dark**, and **AMOLED** appearance
+modes. Fin is the light stone surface; Dark uses dark neutral surfaces; AMOLED
+uses near-black surfaces. Theme selection is presentation state only and is
+stored as a browser preference. Shared component behavior and the image pipeline
+are described in [Context-Manager](Context-Manager/product-truth.md).
+
 ## Palette and hierarchy
 
 | Role | Color |
@@ -81,6 +87,10 @@ muted sage for the dashed spending series. Use compact tabular figures, a wide
 weekly chart, a spending ring with labeled amounts, and a readable recent
 transactions table. The chart entry animation runs when the period or currency
 changes. Provide a weekly figures table and honor reduced motion.
+
+Keep synthetic FinGraph content visibly identified as sample data. Do not use
+stock-market styling as an implication that the records are market prices or a
+user's investment history.
 
 Use stone and white surfaces for transactions, budgets, goals, imports, and
 calendar. The statement cutout accompanies first use. Keep decorative artwork

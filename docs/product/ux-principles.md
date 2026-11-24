@@ -1,37 +1,27 @@
-# UX Principles & Philosophy — Finora
+# Finora experience principles
 
-## 1. Core Philosophy: Complexity in the System, Simplicity in the Experience
+These principles describe how current product surfaces should communicate. The implementation status for each surface is in [Context-Manager/product-truth.md](../../Context-Manager/product-truth.md); visual tokens are in [`DESIGN.md`](../../DESIGN.md).
 
-Finora is an intelligence platform, not an accounting spreadsheet or a crypto playground. It handles sophisticated statistical models, time-series forecasting, and behavioural categorization behind the scenes so the user can make immediate, confident financial decisions.
+## 1. Keep observed facts separate from examples and estimates
 
-```mermaid
-flowchart LR
-    A[Observe\nTemporal Flow] --> B[Understand\nBehavioural Delta]
-    B --> C[Predict\nMonth-End Burn]
-    C --> D[Decide\nClear Tradeoffs]
-    D --> E[Act\nTargeted Nudge]
-```
+Use confirmed user transactions for personal totals. Label public, demo, synthetic, and forecast values at the point of use. Never present a generated balance or synthetic chart as a user's history.
 
----
+## 2. Make first use honest
 
-## 2. The Five Fast Answers
+An empty workspace is a successful state. Explain how to add an account label or import data, but do not prefill a private account with sample activity. A failed read needs an error/retry path, not zero values.
 
-Every interface surface in Finora is engineered to answer five questions within seconds:
-1. **Where is my money going?** *(Time-axis Financial Calendar & Merchant Clarity)*
-2. **How am I behaving?** *(Discretionary vs Essential ratio, Weekend splurge index, Velocity)*
-3. **Am I on track?** *(Daily budget pace vs remaining runway)*
-4. **What is likely to happen next?** *(Projected month-end spend & budget exhaustion date)*
-5. **What should I do about it?** *(Actionable, quantifiable next-step recommendations)*
+## 3. Put review before persistence
 
----
+Show the extracted statement rows, their debit/credit direction, and the target account. Keep editing and exclusion available. Say clearly when the confirm action writes transactions.
 
-## 3. Behavioural Psychology & Tone Guidelines
+## 4. Explain money and uncertainty
 
-- **Calm, Analytical, Non-Judgmental**: Financial anxiety is real. Finora acts as an objective, trusted analyst.
-  - ❌ *Never say*: "You are wasting money on dining out!"
-  - ✅ *Always say*: "Dining spend is currently 18% above your usual baseline. A ₹42/day adjustment keeps your month-end on target."
-- **Progressive Disclosure**:
-  - **Level 1 (Immediate)**: What do I need to know?
-  - **Level 2 (Contextual)**: Why is this happening?
-  - **Level 3 (Diagnostic)**: Show the underlying statistical baseline, features, and model details.
-- **No Artificial Urgency**: Avoid countdown timers, flashing alerts, or gamified stress triggers.
+Use labels for currency and transaction direction. Separate transfers from inflows and spending. Define a metric's inputs and time window. Distinguish observed totals from forecasts, rules, and synthetic examples.
+
+## 5. Avoid financial pressure and unsupported advice
+
+Use calm, non-judgmental copy. Do not use urgency patterns to push a financial action. Suggestions should state their evidence and avoid claiming guaranteed returns or investment outcomes.
+
+## 6. Keep interfaces usable in real conditions
+
+Preserve keyboard operation, visible focus, readable contrast, mobile layouts, and reduced-motion behavior. Loading, empty, error, and success states are part of the feature contract.

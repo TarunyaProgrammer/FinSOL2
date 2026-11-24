@@ -1,44 +1,26 @@
-# Security & Privacy Architecture — Finora
+# Security and privacy implementation
 
-## 1. Security First Principles
+This page summarizes current code controls. It is not a security certification. The authoritative invariants and known risks are in [Context-Manager/data-and-security.md](../../Context-Manager/data-and-security.md).
 
-Financial applications demand defense-in-depth, strict data segregation, and privacy preservation.
+## Current path
 
-```mermaid
-flowchart LR
-    subgraph DataClassification [Data Classification Boundaries]
-        PII[PII: Email, Full Name, IP]
-        FIN[Financial Data: Transactions, Balances]
-        MLD[Derived ML Data: Features, Behaviour Scores]
-    end
+- Supabase Auth owns hosted identity and passwords.
+- Next.js SSR verifies claims before serving the authenticated dashboard.
+- The browser sends a Supabase access token to FastAPI.
+- FastAPI validates that token with Supabase Auth, resolves the app profile, and supplies the verified user ID to the async DB session.
+- Postgres sessions use the restricted `finora_app` role and transaction-local JWT subject, with RLS on user-owned tables.
+- Application reads and writes still filter by the current user's ID.
 
-    subgraph SecurityControls [Security Enforcement Controls]
-        C1[Argon2id Hashing\nHMAC-SHA256 JWT]
-        C2[Account Number Masking\ne.g., **** 4920]
-        C3[Zero Credential Storage\nStateless Demo Adapters]
-        C4[Strict Data Isolation\nuser_id Scoped Queries]
-    end
+## Data handling
 
-    PII --> C1
-    FIN --> C2
-    FIN --> C3
-    MLD --> C4
-```
+- Local secrets belong in ignored environment files or hosted secret settings.
+- Statement preview parses temporarily and does not persist rows. Confirmation validates ownership and persists reviewed canonical transactions.
+- Browser API responses stay in bounded, user-scoped memory; sign-out clears the cache.
+- Bank adapters are simulated and must not accept real bank credentials.
 
----
+## Limitations
 
-## 2. Authentication & Authorization
-
-- **Password Storage**: Passwords hashed using `argon2id` (or `bcrypt` with work factor 12).
-- **Token Strategy**: Stateless JWT access tokens (short-lived: 15 minutes) paired with HTTP-only, secure, SameSite cookies for refresh tokens.
-- **Tenant Isolation**: Every database query on sensitive entities (`BankAccount`, `Transaction`, `Budget`, `FinancialGoal`) explicitly enforces `user_id == current_user.id`.
-
----
-
-## 3. Threat Modeling & OWASP Hardening
-
-1. **SQL Injection**: Prevented via SQLAlchemy ORM parameterized queries. Zero raw string interpolation.
-2. **Cross-Site Scripting (XSS)**: Next.js automatic React escaping + strict Content Security Policy (CSP).
-3. **Cross-Site Request Forgery (CSRF)**: SameSite=Lax/Strict cookie policies + Anti-CSRF token verification on state-changing POST/PUT/DELETE requests.
-4. **Rate Limiting**: IP and User-based token bucket rate limiting on sensitive endpoints (`/auth/login`, `/statements/upload`, `/bank/sync`).
-5. **Malicious File Ingestion**: Ingestion endpoint validates magic bytes, enforces a 4 MB upload limit compatible with Vercel Hobby's request-body cap, and processes files in memory without executing filesystem scripts. Larger uploads need a direct-to-object-storage flow.
+- Supabase tokens are checked over HTTP per API request; this adds latency.
+- Email confirmation is disabled for the current hosted demo, so signup does not prove email ownership.
+- The `privacy_gate.py` names and outputs do not guarantee air-gapped processing, zero network egress, or a cryptographic compliance certificate.
+- Review the current schema and hosted RLS settings after each migration. Local tests do not prove hosted isolation.

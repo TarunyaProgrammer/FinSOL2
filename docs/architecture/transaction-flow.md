@@ -1,67 +1,35 @@
-# Canonical Transaction Pipeline & Flow — Finora
+# Canonical transaction flow
 
-## 1. Architectural Philosophy
-
-Every transaction entering Finora—regardless of originating from a live bank sync (HSBCDemoAdapter), CSV batch file, Excel workbook, or PDF bank statement—**must pass through an identical canonical normalization pipeline**.
-
-No raw source formats are persisted directly as separate entities. The system maintains a singular domain model of money in motion.
-
----
-
-## 2. Ingestion to Calendar Pipeline
+The canonical transaction model is the shared representation for user-reviewed imports, manual entries, and simulated adapter records.
 
 ```mermaid
 flowchart TD
-    subgraph Sources [Heterogeneous Ingestion Sources]
-        S_Bank[Simulated Bank API\nHSBC / SBI / HDFC Demo]
-        S_CSV[CSV Bank Statements]
-        S_XLSX[XLSX Bank Statements]
-        S_PDF[PDF Bank Statements]
-        S_Manual[Manual Transaction Input]
-    end
-
-    subgraph NormalizationPipeline [Canonical Ingestion Engine]
-        Step1[Raw Record Parser & Sanitizer]
-        Step2[Field Mapper & Type Validator]
-        Step3[Currency & Amount Normalization]
-        Step4[Merchant Resolution & Fuzzy Matching]
-        Step5[Category Classifier Engine]
-        Step6[Deduplication Hash Generator\nSHA256(Account + Timestamp + Amount + Ref)]
-    end
-
-    subgraph Persistence [PostgreSQL Core Storage]
-        DB_Tx[(transactions Table\nCanonical Entity)]
-    end
-
-    subgraph DownstreamConsumers [Platform Intelligence Consumers]
-        C_Cal[Financial Calendar View\nDay/Week/Month Heatmaps]
-        C_Budget[Budget Tracking & Burn Estimator]
-        C_ML[ML Feature Store & Anomaly Scorer]
-        C_Goal[Financial Independence Projection]
-    end
-
-    Sources --> Step1
-    Step1 --> Step2
-    Step2 --> Step3
-    Step3 --> Step4
-    Step4 --> Step5
-    Step5 --> Step6
-    Step6 --> DB_Tx
-    DB_Tx --> C_Cal
-    DB_Tx --> C_Budget
-    DB_Tx --> C_ML
-    DB_Tx --> C_Goal
+  CSV[CSV upload] --> Preview[Parse and validate draft]
+  OCR[Optional PDF/image OCR] --> Preview
+  Manual[Manual entry] --> Canonical[Canonical transaction]
+  Demo[Simulated adapter] --> Normalize[Adapter normalization]
+  Preview -->|explicit confirm only| Canonical
+  Normalize --> Canonical
+  Canonical --> Dedupe[Account-scoped deduplication]
+  Dedupe --> DB[(User-owned transaction row)]
+  DB --> Calendar[Calendar]
+  DB --> Summary[Monthly summary]
+  DB --> Analytics[Statistical/rule analytics]
 ```
 
----
+## Persisted shape
 
-## 3. Step-by-Step Normalization Breakdown
+- `amount` is an absolute positive decimal; `transaction_type` carries `DEBIT`, `CREDIT`, or `TRANSFER` direction.
+- `currency` remains attached to every row. No conversion is implied.
+- `raw_description` preserves source text; reviewed merchant/category labels are separate metadata.
+- `account_id` and `user_id` are server-validated and owner-scoped.
+- The deduplication hash is computed from account and transaction identity fields; imports skip repeated hashes.
 
-| Step | Function | Error / Edge Case Handling |
-| :--- | :--- | :--- |
-| **1. Parser & Sanitizer** | Strips whitespace, null bytes, special formatting characters. | Rejects malformed binary payloads or corrupt files. |
-| **2. Field Mapping** | Maps varied headers (`Txn Date`, `Value Dt`, `Posting Date`) to `occurred_at`. | Fallback to upload timestamp if date parsing fails; returns validation errors. |
-| **3. Amount Normalization** | Identifies Credit/Debit indicators (`CR/DR`, negative numbers, separate debit/credit columns). | Enforces absolute numeric `amount` with explicit `transaction_type` enum (`DEBIT`, `CREDIT`, `TRANSFER`). |
-| **4. Merchant Resolution** | Normalizes raw descriptions (e.g., `POS 4912903 SWIGGY BANGALORE IN` → `Swiggy`). | Substring dictionary lookup + regex substitution rules. |
-| **5. Categorization** | Assigns merchant-based default category or applies keyword heuristics. | Assigns `Uncategorized` if ambiguous; prompts user for one-click rules. |
-| **6. Deduplication** | Computes `dedup_hash = SHA256(f"{acc_id}_{occurred_at}_{amount}_{ref}")`. | On conflict: updates existing record metadata or safely ignores identical duplicate. |
+## Entry points
+
+- CSV/optional OCR: `backend/app/domain/statement_import/` and `api/v1/statements.py`.
+- Manual entry/delete/filter/summary: `backend/app/api/v1/transactions.py`.
+- Simulated adapter: `backend/app/domain/bank_adapters/` and `api/v1/bank.py`.
+- Schema: `backend/app/schemas/canonical_transaction.py` and `backend/app/db/models/transaction.py`.
+
+Do not describe XLSX parsing, live bank sync, automatic categorization accuracy, or persisted categories as implemented unless the current code supports the claim.
