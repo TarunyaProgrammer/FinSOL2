@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // The Vercel multi-service deployment does not expose Next's image optimizer
+  // route. Serve checked-in public images directly instead of generating
+  // `/_next/image` URLs that return the frontend's 404 page.
+  images: {
+    unoptimized: true,
+  },
   experimental: {
     agentUpgrade: "security",
   },
