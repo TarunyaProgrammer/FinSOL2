@@ -1,66 +1,22 @@
-# Bank Adapter Architecture — Finora
+# Simulated bank adapters
 
-## 1. Design Overview
+The adapter interface makes synthetic bank activity reusable by the demo API. It is not a live open-banking integration.
 
-Finora interacts with external banking systems strictly via the **Adapter Pattern**.
+## Implementation
 
-### Critical Safety Invariants
-- **Zero Real Banking Secrets**: The system will never ask for, transmit, or store real banking passwords, 2FA tokens, or PINs.
-- **Simulated Integration Baseline**: All development and demonstrations utilize mock banking adapters (e.g. `HSBCDemoAdapter`, `SBIDemoAdapter`) returning realistic, generated financial streams.
-- **Pluggable Architecture**: The domain layer depends exclusively on the `BankAdapter` abstract base class.
+- Interface: `backend/app/domain/bank_adapters/base.py`
+- Factory: `backend/app/domain/bank_adapters/factory.py`
+- Current deterministic demo: `backend/app/domain/bank_adapters/hsbc_demo.py`
+- API: `backend/app/api/v1/bank.py`
+- Frontend account/connect surface: `frontend/src/components/prototype/LiveBankConnectCard.tsx`
 
----
+`POST /api/v1/bank/sync` verifies ownership of the selected account, invokes a registered adapter, normalizes generated rows into canonical transactions, deduplicates them, and updates demo sync metadata. The UI's “Connect” action creates an account label with a generated last-four value; it does not authenticate with the named bank.
 
-## 2. Adapter Class Diagram
+## Contract
 
-```mermaid
-classDiagram
-    class BankAdapter {
-        <<interface>>
-        +institution_id: str
-        +institution_name: str
-        +authenticate(credentials: Dict) AuthResult
-        +get_accounts(session_token: str) List~RawBankAccount~
-        +get_transactions(account_id: str, since: datetime) List~RawBankTransaction~
-        +get_balance(account_id: str) BalanceDTO
-    }
+- Keep all adapters deterministic or synthetic and label them as demos.
+- Never request or store a real bank password, PIN, OTP, or provider access token.
+- An institution logo/name or account label does not prove an external connection.
+- Before adding a real provider, require a separate product, legal, data-security, credential, and provider-integration design. Do not retrofit real credentials into this interface without that review.
 
-    class HSBCDemoAdapter {
-        +institution_id: "hsbc_demo"
-        +institution_name: "HSBC Demo Bank"
-        +authenticate(credentials: Dict) AuthResult
-        +get_accounts(session_token: str) List~RawBankAccount~
-        +get_transactions(account_id: str, since: datetime) List~RawBankTransaction~
-        +get_balance(account_id: str) BalanceDTO
-        -_generate_demo_stream() List~RawBankTransaction~
-    }
-
-    class SBIDemoAdapter {
-        +institution_id: "sbi_demo"
-        +institution_name: "State Bank of India (Demo)"
-        +authenticate(credentials: Dict) AuthResult
-        +get_accounts(session_token: str) List~RawBankAccount~
-        +get_transactions(account_id: str, since: datetime) List~RawBankTransaction~
-        +get_balance(account_id: str) BalanceDTO
-    }
-
-    class BankAdapterFactory {
-        +get_adapter(institution_id: str) BankAdapter
-        +list_supported_institutions() List~InstitutionMetadata~
-    }
-
-    BankAdapter <|-- HSBCDemoAdapter
-    BankAdapter <|-- SBIDemoAdapter
-    BankAdapterFactory ..> BankAdapter : creates
-```
-
----
-
-## 3. HSBC Demo Implementation Mechanics
-
-The `HSBCDemoAdapter` generates deterministic yet rich behavioural patterns:
-- **Salaried Income**: Bi-weekly or 1st-of-month salary credits.
-- **Recurring Subscriptions**: Netflix, Spotify, AWS, Gym memberships on regular cycles.
-- **Impulse Bursts**: Weekend dining out (Swiggy, Zomato) and late-night e-commerce (Amazon, Blinkit).
-- **Utility Bills**: Electricity, broadband, mobile recharges mid-month.
-- **Realistic Noise**: ATM withdrawals, UPI peer transfers with varying descriptions.
+See [product truth](../../Context-Manager/product-truth.md) for the current UI overclaim and [data/security contracts](../../Context-Manager/data-and-security.md).

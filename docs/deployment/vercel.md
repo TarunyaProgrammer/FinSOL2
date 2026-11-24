@@ -5,11 +5,11 @@ in `backend/`. The root [`vercel.json`](../../vercel.json) configures both as
 Vercel Services and sends `/api/v1/*` and `/health` to FastAPI. Other paths go
 to Next.js.
 
-Vercel Services are currently a beta feature. If the Vercel import screen does
-not offer Services for this account, create two Vercel projects from the same
-repository instead: set one project's Root Directory to `frontend`, the
-other's to `backend`, and configure a public backend URL for the frontend.
-That alternative needs separate deployment wiring and is not configured here.
+If the Vercel import screen does not offer Services for this account, create
+two Vercel projects from the same repository instead: set one project's Root
+Directory to `frontend`, the other's to `backend`, and configure a public
+backend URL for the frontend. That alternative needs separate deployment
+wiring and is not configured here.
 
 ## Import the repository
 
@@ -87,6 +87,11 @@ on working email delivery.
 - `/` renders the public Finora landing page.
 - `/health` returns the FastAPI health response.
 - `/api/v1/docs` opens the API docs.
+- Landing page and login illustrations load from `/images/...` as static files.
+  `frontend/next.config.mjs` disables Next's image optimizer because optimized
+  `/_next/image` requests returned 404 in the deployed fork. Check the original
+  static image URL and the optimized URL separately when diagnosing image
+  failures; do not remove the workaround without verifying the deployed route.
 - Create a test account, sign in, create an account label, and preview a small
   CSV. Confirm that importing saves only the rows explicitly reviewed.
 - Check Vercel Function logs and Supabase Auth/database logs if a request fails.
@@ -101,6 +106,5 @@ on working email delivery.
   current Vercel deployment can parse CSV; scanned PDF, PNG, and JPG extraction
   returns an unavailable message until a separately benchmarked OCR runtime is
   deployed. Do not present scanned import as working in this Vercel build.
-- Vercel Services are beta. The Python runtime is generally available. A
-  successful build does not prove the hosted Supabase email, database, or
+- A successful build does not prove the hosted Supabase email, database, or
   import flow; verify those on the deployed domain.

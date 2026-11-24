@@ -1,50 +1,23 @@
-# Historical Statement Ingestion Architecture — Finora
+# Statement import
 
-## 1. Overview & Ingestion Life Cycle
+The current import path separates transient preview from explicit persistence. See [first-use workflow](../agents/first-user-workflow.md) for the user journey and [Context-Manager/data-and-security.md](../../Context-Manager/data-and-security.md) for the data contracts.
 
-Users frequently hold years of historical statement records in varied formats (CSV, XLSX, PDF). The Ingestion Engine processes multi-year banking archives and converts them into canonical transaction records seamlessly.
+## Supported formats in code
 
----
+| Format | Current handling | Hosted status |
+| --- | --- | --- |
+| CSV | Header/column mapping for a date, description, and amount with debit/credit direction. Amount-only files without direction are rejected. | Supported default path; still requires review. |
+| PDF | File signature/page checks then optional local PaddleX table recognition. | OCR dependency is absent from the default Vercel runtime. |
+| PNG/JPG | Signature and image-dimension checks then optional local PaddleX table recognition. | OCR dependency is absent from the default Vercel runtime. |
+| XLSX | No upload reader in the current API. | Unsupported. |
 
-## 2. Parsing Architecture
+Limits in `backend/app/domain/statement_import/document_reader.py` include 4 MB, 20 PDF pages, and 500 candidate transactions. OCR files are copied to a temporary file for the PaddleX call and removed in `finally`.
 
-```mermaid
-flowchart TD
-    File[Uploaded File Stream] --> MIME{MIME Type & Header Detector}
-    
-    MIME -->|text/csv| P_CSV[CSV Stream Parser]
-    MIME -->|application/vnd.openxmlformats| P_XLSX[XLSX Spreadsheet Parser]
-    MIME -->|application/pdf| P_PDF[PDF Text/Table Extraction Engine]
-    
-    P_CSV --> Sched[Column & Layout Heuristic Detector]
-    P_XLSX --> Sched
-    P_PDF --> Sched
-    
-    Sched --> RawRecords[Raw Records Stream]
-    
-    RawRecords --> Val[Schema & Sanity Validation]
-    Val --> Norm[Canonical Normalizer & Classifier]
-    Norm --> Dedup{Deduplication Check against DB}
-    
-    Dedup -->|New Record| Insert[Batch Insert to transactions]
-    Dedup -->|Duplicate| Skip[Log Duplicate & Skip]
-    
-    Insert --> Feat[Trigger Historical Feature Computation]
-    Feat --> MLProfile[Update User ML Behaviour Profile]
-```
+## Request sequence
 
----
+1. Authenticated `/statements/preview` reads and parses the upload. It never writes to the database.
+2. The frontend lets the user inspect and edit candidate rows.
+3. `/statements/import` requires an owned account, validated submitted rows, and explicit confirmation.
+4. The backend deduplicates and writes canonical transactions under the current user.
 
-## 3. Supported File Formats & Extractors
-
-### 3.1 CSV Parser
-- Auto-detects delimiters (`,`, `;`, `\t`, `|`).
-- Heuristic header detection scanning for common financial terms (`Date`, `Narration`, `Description`, `Debit`, `Credit`, `Withdrawal`, `Deposit`, `Balance`).
-
-### 3.2 XLSX Parser
-- Inspects worksheet sheets; automatically selects the sheet with the densest numerical and date matrix.
-- Handles formatted dates, floating point serials, and custom currency formatting.
-
-### 3.3 PDF Parser
-- Vector & text coordinate table extraction.
-- Regex fallbacks for standard Indian and Global bank statement layouts (HDFC, SBI, ICICI, HSBC, Chase, Barclays).
+Preview edits are untrusted input at confirmation time; keep server-side validation and owner checks. Do not preserve source files in logs or storage. OCR output is a draft and has no accuracy guarantee.
